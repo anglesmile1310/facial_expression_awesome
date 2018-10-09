@@ -12,7 +12,7 @@ graph = tf.get_default_graph()
 model_emoji = model_from_json(open(MODEL_EMOJI_JSON, "r").read())
 model_emoji.load_weights(MODEL_EMOJI_WEIGHTS)
 
-# emotion_classifier = load_model(
-#     MODEL_FER2013_WEIGHT,
-#     compile=False
-# )
+emotion_classifier = load_model(
+    MODEL_FER2013_WEIGHT,
+    compile=False
+)
