@@ -1,20 +1,27 @@
-import numpy as np
-import cv2
 from contextlib import closing
+
+import cv2
+import numpy as np
+
 from videosequence import VideoSequence
-from video_expression import face_detector, model_emoji, graph
+from video_expression import (
+    face_detector, model_emoji, graph,
+    emotion_classifier
+)
 from awesome_video_expression.settings import NB_STEP_FRAME
 
-emotion_list=["Anger","Disgust","Fear","Happy","Sad","Surprise","Neutral"]
+emotion_list = ["Anger", "Disgust", "Fear",
+                "Happy", "Sad", "Surprise", "Neutral"]
 emotion_mapping = {
-    "Anger" : "Neutral",
-    "Disgust" : "Neutral",
-    "Fear" : "Neutral",
-    "Neutral" : "Neutral",
-    "Happy" : "Happy",
-    "Surprise" : "Happy",
-    "Sad" : "Sad"
+    "Anger": "Neutral",
+    "Disgust": "Neutral",
+    "Fear": "Neutral",
+    "Neutral": "Neutral",
+    "Happy": "Happy",
+    "Surprise": "Happy",
+    "Sad": "Sad"
 }
+
 
 def get_box(image):
     """
@@ -27,6 +34,7 @@ def get_box(image):
     dets = face_detector(image, 1)
     faces = [[d.left(), d.top(), d.right(), d.bottom()] for d in dets]
     return faces
+
 
 def find_first_face(faces, scale):
     """
@@ -63,12 +71,15 @@ def get_max_box(frames, nb_frames=10, scale=0.5):
         faces = get_box(small)
         # Find first face
         first_face = find_first_face(faces, scale)
-        (x, y, w, h) = (max(x, first_face[0]), max(y, first_face[1]), max(w, first_face[2]), max(h, first_face[3]))
+        (x, y, w, h) = (max(x, first_face[0]), max(y, first_face[1]), max(
+            w, first_face[2]), max(h, first_face[3]))
     # Add padding
-    (x, y, w, h) = (
-    max(0, x - padding), max(0, y - padding), min(w + padding, img.shape[1]), min(h + padding, img.shape[0]))
+    (x, y, w, h) = (max(0, x - padding), max(0, y - padding),
+                    min(w + padding, img.shape[1]),
+                    min(h + padding, img.shape[0]))
 
     return (x, y, w, h)
+
 
 def crop_faces(img, box, crop_size=(48, 48)):
     """
@@ -109,9 +120,10 @@ def generate_faces(video_path):
                 times.append(i)
                 faces.append(cropped_face)
             return times, faces, len(frames)
-    except:
-        print('Error')
+    except Exception as e:
+        print('Error: ', e)
         return [], [], 0
+
 
 def predict(video_path):
     """
@@ -119,7 +131,8 @@ def predict(video_path):
         Input:
             video_path: the path of video
         Output:
-            result : the list of dict result with format {"keyframe" : keyframe, "emotion" : emotion}
+            result : the list of dict result with format
+                     {"keyframe" : keyframe, "emotion" : emotion}
             nb_frames : the number of frame
     """
     with graph.as_default():
@@ -128,6 +141,29 @@ def predict(video_path):
             results = model_emoji.predict(np.array(faces))
             # Convert to emotion text
             emotions = [emotion_list[np.argmax(r)] for r in results]
-            return [{'keyframe': int(times[i]), 'emotion': emotion_mapping[emotions[i]]} for i in range(len(emotions))], nb_frames
+            return [{'keyframe': int(times[i]), 'emotion': emotion_mapping[emotions[i]]}  # noqa
+                    for i in range(len(emotions))], nb_frames
         return [], 0
 
+
+def preprocess_input(x, v2=True):
+    x = x.astype('float32')
+    x = x / 255.0
+    if v2:
+        x = x - 0.5
+        x = x * 2.0
+    return x
+
+
+def predict_fe(video_path):
+    with graph.as_default():
+        times, faces, nb_frames = generate_faces(video_path)
+        faces = [preprocess_input(face) for face in faces]
+        faces = [cv2.resize(face, (64, 64)) for face in faces]
+        faces = [np.expand_dims(face, -1) for face in faces]
+        if nb_frames:
+            results = emotion_classifier.predict(np.array(faces))
+            emotions = [emotion_list[np.argmax(r)] for r in results]
+            return [{'keyframe': int(times[i]), 'emotion': emotions[i]}
+                    for i in range(len(emotions))], nb_frames
+        return [], 0
