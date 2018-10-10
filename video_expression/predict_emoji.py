@@ -2,19 +2,27 @@ import numpy as np
 import cv2
 from contextlib import closing
 from videosequence import VideoSequence
-from video_expression import face_detector, model_emoji, graph
-from awesome_video_expression.settings import NB_STEP_FRAME
+from video_expression import face_detector, model_emoji_64_64, graph
+from awesome_video_expression.settings import NB_STEP_FRAME, IMAGE_SIZE_64
 
 emotion_list=["Anger","Disgust","Fear","Happy","Sad","Surprise","Neutral"]
 emotion_mapping = {
-    "Anger" : "Neutral",
-    "Disgust" : "Neutral",
-    "Fear" : "Neutral",
+    "Anger": "Nervous",
+    "Disgust": "Nervous",
+    "Fear": "Nervous",
     "Neutral" : "Neutral",
     "Happy" : "Happy",
     "Surprise" : "Happy",
     "Sad" : "Sad"
 }
+
+def preprocess_input(x, v2=True):
+    x = x.astype('float32')
+    x = x / 255.0
+    if v2:
+        x = x - 0.5
+        x = x * 2.0
+    return x
 
 def get_box(image):
     """
@@ -67,10 +75,10 @@ def get_max_box(frames, nb_frames=10, scale=0.5):
     # Add padding
     (x, y, w, h) = (
     max(0, x - padding), max(0, y - padding), min(w + padding, img.shape[1]), min(h + padding, img.shape[0]))
-
     return (x, y, w, h)
 
-def crop_faces(img, box, crop_size=(48, 48)):
+
+def crop_faces(img, box, crop_size=(IMAGE_SIZE_64, IMAGE_SIZE_64)):
     """
         Crop the face in image with box
         Input:
@@ -83,6 +91,7 @@ def crop_faces(img, box, crop_size=(48, 48)):
     (x, y, w, h) = box
     detected_face = img[int(y):int(h), int(x):int(w)]
     detected_face = cv2.resize(detected_face, crop_size)
+    detected_face = preprocess_input(detected_face, True)
     return np.expand_dims(detected_face, -1)
 
 
@@ -125,7 +134,7 @@ def predict(video_path):
     with graph.as_default():
         times, faces, nb_frames = generate_faces(video_path)
         if nb_frames:
-            results = model_emoji.predict(np.array(faces))
+            results = model_emoji_64_64.predict(np.array(faces))
             # Convert to emotion text
             emotions = [emotion_list[np.argmax(r)] for r in results]
             return [{'keyframe': int(times[i]), 'emotion': emotion_mapping[emotions[i]]} for i in range(len(emotions))], nb_frames
