@@ -45,6 +45,7 @@ DEBUG = env('APP_DEBUG')
 
 ALLOWED_HOSTS = ['*']
 
+IMAGE_SIZE_64 = 64
 
 # Application definition
 
@@ -74,6 +75,7 @@ MIDDLEWARE = [
 VIDEO_UPLOAD_MODEL = os.path.join(BASE_DIR, env('VIDEO_UPLOAD_MODEL'))
 MODEL_EMOJI_WEIGHTS = os.path.join(BASE_DIR, env('MODEL_EMOJI_WEIGHTS'))
 MODEL_EMOJI_JSON = os.path.join(BASE_DIR, env('MODEL_EMOJI_JSON'))
+MODEL_EMOJI_64_64 = os.path.join(BASE_DIR, env('MODEL_EMOJI_NEW'))
 
 NB_STEP_FRAME  = int(env('NB_STEP_FRAME'))
 
