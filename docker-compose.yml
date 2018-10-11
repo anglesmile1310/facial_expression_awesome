@@ -1,0 +1,32 @@
+version: '2'
+services:
+    nginx:
+        container_name: viblo_nginx
+        build:
+            context: ./.docker/nginx
+        restart: always
+        links:
+            - api
+        tty: true
+        networks:
+            - mynet
+    api:
+        container_name: facial_expression_awesome
+        build:
+            context: ./
+        restart: always
+        command: python3 manage.py runserver 0.0.0.0:80
+        ports:
+            - "8000:80"
+        tty: true
+        networks:
+            mynet:
+                ipv4_address: 10.6.0.6
+
+networks:
+    mynet:
+        driver: bridge
+        ipam:
+            config:
+                - subnet: 10.6.0.0/16
+                  gateway: 10.6.0.1
